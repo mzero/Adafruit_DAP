@@ -113,6 +113,8 @@ device_t Adafruit_DAP_SAM::devices[] = {
 
 //-----------------------------------------------------------------------------
 bool Adafruit_DAP_SAM::select(uint32_t *found_id) {
+  chipErased = false;   // as good a time as any
+
   uint32_t DAP_DSU_did;
 
   // Stop the core
@@ -147,6 +149,7 @@ void Adafruit_DAP_SAM::erase(void) {
   delay(100);
   while (0 == (dap_read_word(DAP_DSU_CTRL_STATUS) & 0x00000100))
     ;
+  chipErased = true;
 }
 
 //-----------------------------------------------------------------------------
@@ -169,15 +172,15 @@ uint32_t Adafruit_DAP_SAM::program_start(uint32_t offset) {
 
 void Adafruit_DAP_SAM::programBlock(uint32_t addr, const uint8_t *buf,
                                     uint16_t size) {
-  /* DM: this is actually unnecessary after a chip erase
-  dap_write_word(NVMCTRL_ADDR, addr >> 1);
+  if (!chipErased) {
+    dap_write_word(NVMCTRL_ADDR, addr >> 1);
 
-  dap_write_word(NVMCTRL_CTRLA, NVMCTRL_CMD_UR); // Unlock Region
-  while (0 == (dap_read_word(NVMCTRL_INTFLAG) & 1));
+    dap_write_word(NVMCTRL_CTRLA, NVMCTRL_CMD_UR); // Unlock Region
+    while (0 == (dap_read_word(NVMCTRL_INTFLAG) & 1));
 
-  dap_write_word(NVMCTRL_CTRLA, NVMCTRL_CMD_ER); // Erase Row
-  while (0 == (dap_read_word(NVMCTRL_INTFLAG) & 1));
-  */
+    dap_write_word(NVMCTRL_CTRLA, NVMCTRL_CMD_ER); // Erase Row
+    while (0 == (dap_read_word(NVMCTRL_INTFLAG) & 1));
+  }
   dap_write_block(addr, buf, size);
 }
 
