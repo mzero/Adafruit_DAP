@@ -225,48 +225,56 @@ public:
 
   uint32_t program_start(uint32_t offset = 0);
 
-  struct USER_ROW {
 
-    uint8_t BOOTPROT : 3;
-    uint8_t EEPROM : 3;
-    uint8_t BOD33_Level : 6;
-    uint8_t BOD33_Enable : 1;
-    uint8_t BOD33_Action : 2;
-    uint8_t WDT_Enable : 1;
-    uint8_t WDT_Always_On : 1;
-    uint8_t WDT_Period : 4;
-    uint8_t WDT_Window : 4;
-    uint8_t WDR_EWOFFSET : 4;
-    uint8_t WDR_WEN : 1;
-    uint8_t BOD33_Hysteresis : 1;
-    uint16_t LOCK : 16;
+  // Sadly, the CMSIS doesn't have this structure defined in it
 
-    void set(uint64_t data) {
-      BOOTPROT = data & 0x07;
-      EEPROM = (data >> 4) & 0x07;
-      BOD33_Level = (data >> 8) & 0x3F;
-      BOD33_Enable = (data >> 14) & 0x01;
-      BOD33_Action = (data >> 15) & 0x03;
-      WDT_Enable = (data >> 25) & 0x01;
-      WDT_Always_On = (data >> 26) & 0x01;
-      WDT_Period = (data >> 27) & 0xF;
-      WDT_Window = (data >> 31) & 0xF;
-      WDR_EWOFFSET = (data >> 35) & 0xF;
-      WDR_WEN = (data >> 39) & 0x01;
-      BOD33_Hysteresis = (data >> 40) & 0x01;
-      LOCK = (data >> 48) & 0xFFFF;
-    }
-    uint64_t get() {
-      return ((uint64_t)LOCK << 48) | ((uint64_t)BOD33_Hysteresis << 40) |
-             ((uint64_t)WDR_WEN << 39) | ((uint64_t)WDR_EWOFFSET << 35) |
-             ((uint64_t)WDT_Window << 31) | ((uint64_t)WDT_Period << 27) |
-             ((uint64_t)WDT_Always_On << 26) | ((uint64_t)WDT_Enable << 25) |
-             ((uint64_t)BOD33_Action << 15) | ((uint64_t)BOD33_Enable << 14) |
-             ((uint64_t)BOD33_Level << 8) | ((uint64_t)EEPROM << 4) |
-             (uint64_t)BOOTPROT;
-    }
+  static const size_t USER_ROW_SIZE = 256;
+
+  union USER_ROW {
+
+    // The first 64 bits of the USER_ROW are mapped specially:
+
+    struct {
+      uint64_t BOOTPROT : 3;
+      uint64_t : 1;
+      uint64_t EEPROM : 3;
+      uint64_t : 1;
+      uint64_t BOD33_Level : 6;
+      uint64_t BOD33_Enable : 1;
+      uint64_t BOD33_Action : 2;
+      uint64_t BOD12_reserved_1 : 12; // defaults to 0x70
+      uint64_t WDT_Enable : 1;
+      uint64_t WDT_Always_On : 1;
+      uint64_t WDT_Period : 4;
+      uint64_t WDT_Window : 4;
+      uint64_t WDR_EWOFFSET : 4;
+      uint64_t WDR_WEN : 1;
+      uint64_t BOD33_Hysteresis : 1;
+      uint64_t BOD12_reserved_2: 1;   // defaults 0
+      uint64_t : 6;
+      uint64_t LOCK : 16;
+
+      // Reserved bits should be set to 1.
+
+      // The two BOD12 fileds are listed as reserved in the data sheet,
+      // but then it says they are internal settings, are set in production
+      // to the default values, and should not be changed.
+    } bit;
+
+    uint32_t reg32[2];
+    uint64_t reg64;
+      // Documentation and existing code is ambiguous: Sometimes this is
+      // handled as a single 64 bit value, sometimes as two 32 bit words.
+
+    // The whole USER_ROW is available as bytes:
+
+    uint8_t byte[USER_ROW_SIZE];
   };
+
   USER_ROW _USER_ROW;
+
+private:
+  bool chipErased;
 };
 
 // DAP for SAMx5

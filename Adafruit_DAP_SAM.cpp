@@ -74,7 +74,6 @@
 #define NVMCTRL_CMD_SSB 0xa545
 
 #define USER_ROW_ADDR 0x00804000
-#define USER_ROW_SIZE 256
 
 /*- Variables ---------------------------------------------------------------*/
 device_t Adafruit_DAP_SAM::devices[] = {
@@ -236,29 +235,15 @@ bool Adafruit_DAP_SAM::readCRC(uint32_t length, uint32_t *crc) {
 }
 
 void Adafruit_DAP_SAM::fuseRead() {
-  uint8_t buf[USER_ROW_SIZE];
-  dap_read_block(USER_ROW_ADDR, buf, USER_ROW_SIZE);
-
-  uint64_t fuses = ((uint64_t)buf[7] << 56) | ((uint64_t)buf[6] << 48) |
-                   ((uint64_t)buf[5] << 40) | ((uint64_t)buf[4] << 32) |
-                   ((uint64_t)buf[3] << 24) | ((uint64_t)buf[2] << 16) |
-                   ((uint64_t)buf[1] << 8) | (uint64_t)buf[0];
-
-  _USER_ROW.set(fuses);
+  dap_read_block(USER_ROW_ADDR, _USER_ROW.byte, USER_ROW_SIZE);
 }
 
 void Adafruit_DAP_SAM::fuseWrite() {
-  uint64_t fuses = _USER_ROW.get();
-  uint8_t buf[USER_ROW_SIZE] = {(uint8_t)fuses,         (uint8_t)(fuses >> 8),
-                                (uint8_t)(fuses >> 16), (uint8_t)(fuses >> 24),
-                                (uint8_t)(fuses >> 32), (uint8_t)(fuses >> 40),
-                                (uint8_t)(fuses >> 48), (uint8_t)(fuses >> 56)};
-
   dap_write_word(NVMCTRL_CTRLB, 0);
   dap_write_word(NVMCTRL_ADDR, USER_ROW_ADDR >> 1);
   dap_write_word(NVMCTRL_CTRLA, NVMCTRL_CMD_EAR);
   while (0 == (dap_read_word(NVMCTRL_INTFLAG) & 1))
     ;
 
-  dap_write_block(USER_ROW_ADDR, buf, USER_ROW_SIZE);
+  dap_write_block(USER_ROW_ADDR, _USER_ROW.byte, USER_ROW_SIZE);
 }
